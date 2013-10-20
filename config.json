@@ -1,0 +1,14 @@
+{
+    "name": "Kanban Reports",
+    "className": "CustomApp",
+    "sdk": "2.0rc1",
+    "javascript": [
+        "App.js",
+        "UserStory.js",
+        "ReportObj.js",
+        "util.js"
+    ],
+    "css": [
+        "app.css"
+    ]
+}

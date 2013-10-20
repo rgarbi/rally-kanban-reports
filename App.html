@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kanban Reports</title>
+
+    <script type="text/javascript" src="/apps/2.0rc1/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+            Ext.define('CustomApp', {
+                extend: 'Rally.app.App',
+                componentCls: 'app',
+                setAutoScroll: true,
+                //TODO: Style the Date Fields. Start the start date a month in the past...
+                items: [
+                    {
+                        xtype: 'rallydatefield',
+                        fieldLabel: 'Start Sate',
+                        itemid: 'startDate',
+                        value: new Date()
+                    },
+                    {
+                        xtype: 'rallydatefield',
+                        fieldLabel: 'End Sate',
+                        itemid: 'endDate',
+                        value: new Date()
+                    },
+                    {
+                        xtype: 'rallybutton',
+                        itemId: 'getReport',
+                        text: 'Get Report'
+                    },
+                    {
+                        xtype: 'container',
+                        itemId: 'pieChart',
+                        height: '50',
+                        style: {
+                            float: 'right',
+                            'vertical-align': 'top',
+                            'margin-top': '-65px',
+                            display: 'inline-block'
+                        }
+                    },
+                    {
+                        xtype: 'container',
+                        itemId: 'grid',
+                        setAutoScroll: true,
+                        style: {
+                            display: 'inline-block',
+                            'vertical-align': 'bottom',
+                            width: '100%'
+                        }
+                    }
+                ],
+            
+                launch: function () {
+                    this.down('#getReport').addListener("click", this._vlaidateQuery, this);
+                },
+            
+                _vlaidateQuery: function () {
+                    //Get start Date
+                    var startDate, endDate;
+                    var compArray = Ext.ComponentQuery.query('rallydatefield');
+                    //TODO: refactor this out into common code.
+                    for (var item in compArray) {
+                        var id = compArray[item].itemid;
+            
+                        if (id === "startDate") {
+                            startDate = compArray[item].rawValue
+                        }
+            
+                        if (id === "endDate") {
+                            endDate = compArray[item].rawValue
+                        }
+                    }
+            
+                    this.startDate = new Date(new Util().parseDate(startDate));
+                    this.endDate = new Date(new Util().parseDate(endDate));
+                    this._queryForStories(startDate, endDate);
+            
+                },
+            
+                _queryForStories: function (startDate, endDate) {
+                    Ext.create('Rally.data.WsapiDataStore', {
+                        model: 'UserStory',
+                        autoLoad: true,
+                        limit: 9999999,
+                        fetch: ['Rank', 'FormattedID', 'Name', 'AcceptedDate', 'InProgressDate', 'RevisionHistory'],
+                        filters: [
+                            {
+                                property: 'ScheduleState',
+                                operator: '=',
+                                value: 'Accepted'
+                            }
+                        ],
+                        sorters: [
+                            {
+                                property: 'FormattedID',
+                                direction: 'ASC'
+                            }
+                        ],
+                        listeners: {
+                            load: this._onDataLoaded,
+                            scope: this
+                        }
+                    });
+                },
+            
+                reportObj: '',
+            
+                _onDataLoaded: function (store, data) {
+                    var records = [], rankIndex = 1, userStories = new Array();
+                    var _endDate = this.endDate;
+                    var _startDate = this.startDate;
+                    console.log(store);
+                    console.log(data);
+                    Ext.Array.each(data, function (record) {
+                        //TODO: InProgressDate parsing from the revision history
+                        console.log(record.get('AcceptedDate'))
+                        if (record.get('AcceptedDate') <= _endDate && record.get('InProgressDate') >= _startDate) {
+            
+                            records.push({
+                                Ranking: rankIndex++,
+                                FormattedID: record.get('FormattedID'),
+                                Name: record.get('Name'),
+                                AcceptedDate: record.get('AcceptedDate'),
+                                InProgressDate: record.get('InProgressDate'),
+                                RevisionHistory: record.get('RevisionHistory')
+                            });
+            
+                            userStories.push(new UserStory(rankIndex++, record.get('FormattedID'), record.get('AcceptedDate'), record.get('InProgressDate'), record.get('RevisionHistory')));
+                        }
+                    });
+            
+                    var customStore = Ext.create('Rally.data.custom.Store', {
+                        data: records
+                    });
+            
+                    if (!this.grid) {
+                        this.grid = this.down('#grid').add({
+                            xtype: 'rallygrid',
+                            store: customStore,
+                            columnCfgs: [
+                                { text: 'Ranking', dataIndex: 'Ranking' },
+                                { text: 'ID', dataIndex: 'FormattedID' },
+                                { text: 'Name', dataIndex: 'Name', flex: 1 },
+                                { text: 'Accepted Date', dataIndex: 'AcceptedDate' },
+                                { text: 'InProgressDate', dataIndex: 'InProgressDate' },
+                                { text: 'RevisionHistory', dataIndex: 'RevisionHistory' }
+                            ]
+                        });
+                    } else {
+                        this.grid.reconfigure(customStore);
+                    }
+            
+                    console.log(records.length);
+                    if (records.length > 0) {
+                        this.reportObj = new ReportObj(this.startDate, this.endDate, userStories);
+                        this.reportObj.calculateDaysInProgress();
+                        this.reportObj.displayChart();
+                    }
+                    else {
+                        //Display message
+            
+                        //Remove Pie Chart if it exists
+                        new ReportObj('', '', '').removeChart();
+                    }
+            
+                }
+            });
+            UserStory = function (rank, id, acceptedDate, inProgressDate, revHistory) {
+            
+                this.rank = rank;
+                this.id = id;
+                this.acceptedDate = acceptedDate;
+                this.inProgressDate = inProgressDate;
+                this.revHistory = revHistory;    
+            
+            };            ReportObj = function (startDate, endDate, userStories) {
+            
+                this.startDate = startDate;
+                this.endDate = endDate;
+                this.userStories = userStories;
+                this.dayRange = new Array();
+            
+                this.totalStories = userStories.size;
+                this.averageDaysInProgress = 0;
+            
+                this.calculateDaysInProgress = function () {
+            
+                    for (var us in this.userStories) {
+                        var userStory = this.userStories[us];
+            
+                        var startedDate = new Date(userStory.inProgressDate);
+                        var doneDate = new Date(userStory.acceptedDate);
+            
+                        var timeInProgress = Rally.util.DateTime.getDifference(doneDate, startedDate, 'day');
+                        if (timeInProgress == 0) {
+                            timeInProgress = 1;
+                        }
+                        this.dayRange.push(timeInProgress);
+                    }
+            
+                };
+            
+                this.getStoriesInRange = function (lowNum, highNum) {
+            
+                    var count = 0;
+                    for (var i in this.dayRange) {
+                        var inProgLength = this.dayRange[i];
+                        if (inProgLength > lowNum && inProgLength <= highNum) {
+                            count = count + 1;
+                        }
+                    }
+            
+                    return count;
+                };
+            
+                this.displayChart = function () {
+            
+                    var piePlace = Ext.ComponentQuery.query('#pieChart')[0];
+            
+                    if (piePlace.items.length == 0) {
+                        Ext.ComponentQuery.query('#pieChart')[0].add(this.getChart());
+                    } else {            
+                        Ext.ComponentQuery.query('#pieChart')[0].removeAll(true);            
+                        this.getChart().bindStore(this.buildChartDataStore());
+                        Ext.ComponentQuery.query('#pieChart')[0].add(this.getChart());           
+                    }
+            
+                };
+            
+                this.removeChart = function () {
+            
+                    var piePlace = Ext.ComponentQuery.query('#pieChart')[0];
+            
+                    if (piePlace.items.length == 0) {
+                        //Do nothing
+                    } else {
+                        Ext.ComponentQuery.query('#pieChart')[0].removeAll(true);
+                    }
+            
+                };
+            
+                this.buildChartData = function () {
+                    var start = 5;
+                    var end = 10;
+                    var bound = 31;
+                    var data = new Array();
+            
+                    var range = this.getStoriesInRange(0, 5);
+                    if (range > 0) {
+                        data.push(
+                            {
+                                'name': 'Stories 0 to 5',
+                                'data': range
+                            }
+                        );
+                    }
+            
+                    while (end < bound) {
+                        var range = this.getStoriesInRange(start, end);
+            
+                        if (range > 0) {
+                            data.push(
+                                {
+                                    'name': 'Stories ' + start + ' to ' + end,
+                                    'data': range
+                                }
+                            );
+                        }
+                        start = start + 5;
+                        end = end + 5;
+                    }
+            
+                    var range = this.getStoriesInRange(bound, 99999);
+                    if (range > 0) {
+                        data.push({
+                            'name': 'Stories ' + bound + '+',
+                            'data': range
+                        });
+                    }
+            
+                    return data;
+            
+                };
+            
+                this.buildChartDataStore = function () {
+                    var store = Ext.create('Ext.data.JsonStore', {
+                        fields: ['name', 'data'],
+                        data: this.buildChartData()
+                    });
+            
+                    return store
+                }
+            
+                this.getChart = function () {
+                    var store = this.buildChartDataStore();
+            
+                    var chart = Ext.create('Ext.chart.Chart', {
+                        id: 'storyPieChart',
+                        width: 600,
+                        height: 300,
+                        animate: true,
+                        store: store,
+                        theme: 'Base:gradients',
+                        title: 'Story Cycle Time',
+                        showInLegend: true,
+                        legend: {
+                            position: 'left'
+                        },
+                        series: [{
+                            type: 'pie',
+                            field: 'data',
+                            showInLegend: true,
+                            tips: {
+                                trackMouse: true,
+                                width: 140,
+                                height: 20,
+                                renderer: function (storeItem, item) {
+                                    // calculate and display percentage on hover
+                                    var total = 0;
+                                    store.each(function (rec) {
+                                        total += rec.get('data');
+                                    });
+                                    this.setTitle(storeItem.get('name') + ': ' + Math.round(storeItem.get('data') / total * 100) + '%');
+                                }
+                            },
+                            highlight: {
+                                segment: {
+                                    margin: 20
+                                }
+                            },
+                            label: {
+                                field: 'name',
+                                display: 'rotate',
+                                contrast: true,
+                                font: '12px Arial'
+                            }
+                        }]
+                    });
+            
+                    return chart;
+                };
+            
+            
+            
+            };            Util = function () {
+            
+                this.parseDate = function (date) {
+                    var dateElements = date.split("/");
+                    return new Date(dateElements[2], dateElements[0] - 1, dateElements[1]);        
+                };
+            };
+            Rally.launchApp('CustomApp', {
+                name: 'Kanban Reports'
+            });
+        });
+    </script>
+
+    <style type="text/css">
+        .app { 
+            margin: 20px;
+        }
+    </style>
+</head>
+<body></body>
+</html>
