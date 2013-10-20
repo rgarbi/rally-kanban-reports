@@ -22,11 +22,9 @@ ReportObj = function (startDate, endDate, userStories) {
             }
             this.dayRange.push(timeInProgress);
         }
-
     };
 
     this.getStoriesInRange = function (lowNum, highNum) {
-
         var count = 0;
         for (var i in this.dayRange) {
             var inProgLength = this.dayRange[i];
@@ -34,7 +32,6 @@ ReportObj = function (startDate, endDate, userStories) {
                 count = count + 1;
             }
         }
-
         return count;
     };
 
@@ -82,7 +79,6 @@ ReportObj = function (startDate, endDate, userStories) {
 
         while (end < bound) {
             var range = this.getStoriesInRange(start, end);
-
             if (range > 0) {
                 data.push(
                     {
@@ -124,6 +120,11 @@ ReportObj = function (startDate, endDate, userStories) {
             width: 600,
             height: 300,
             animate: true,
+            style: {
+                float: 'right',
+                'margin-top': '-65px',
+                display: 'inline-block'  
+            },
             store: store,
             theme: 'Base:gradients',
             title: 'Story Cycle Time',

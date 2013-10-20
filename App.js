@@ -1,7 +1,7 @@
 Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
-    setAutoScroll: true,
+    setAutoScroll: false,
     //TODO: Style the Date Fields. Start the start date a month in the past...
     items: [
         {
@@ -23,13 +23,11 @@ Ext.define('CustomApp', {
         },
         {
             xtype: 'container',
-            itemId: 'pieChart',
-            height: '50',
+            itemId: 'pieChart',            
             style: {
                 float: 'right',
-                'vertical-align': 'top',
-                'margin-top': '-65px',
-                display: 'inline-block'
+                width: '75%',
+                'vertical-align': 'top'                
             }
         },
         {
@@ -68,7 +66,6 @@ Ext.define('CustomApp', {
         this.startDate = new Date(new Util().parseDate(startDate));
         this.endDate = new Date(new Util().parseDate(endDate));
         this._queryForStories(startDate, endDate);
-
     },
 
     _queryForStories: function (startDate, endDate) {
@@ -102,14 +99,10 @@ Ext.define('CustomApp', {
     _onDataLoaded: function (store, data) {
         var records = [], rankIndex = 1, userStories = new Array();
         var _endDate = this.endDate;
-        var _startDate = this.startDate;
-        console.log(store);
-        console.log(data);
+        var _startDate = this.startDate;       
         Ext.Array.each(data, function (record) {
-            //TODO: InProgressDate parsing from the revision history
-            console.log(record.get('AcceptedDate'))
+            //TODO: InProgressDate parsing from the revision history            
             if (record.get('AcceptedDate') <= _endDate && record.get('InProgressDate') >= _startDate) {
-
                 records.push({
                     Ranking: rankIndex++,
                     FormattedID: record.get('FormattedID'),
@@ -118,7 +111,6 @@ Ext.define('CustomApp', {
                     InProgressDate: record.get('InProgressDate'),
                     RevisionHistory: record.get('RevisionHistory')
                 });
-
                 userStories.push(new UserStory(rankIndex++, record.get('FormattedID'), record.get('AcceptedDate'), record.get('InProgressDate'), record.get('RevisionHistory')));
             }
         });
@@ -132,12 +124,11 @@ Ext.define('CustomApp', {
                 xtype: 'rallygrid',
                 store: customStore,
                 columnCfgs: [
-                    { text: 'Ranking', dataIndex: 'Ranking' },
-                    { text: 'ID', dataIndex: 'FormattedID' },
-                    { text: 'Name', dataIndex: 'Name', flex: 1 },
-                    { text: 'Accepted Date', dataIndex: 'AcceptedDate' },
-                    { text: 'InProgressDate', dataIndex: 'InProgressDate' },
-                    { text: 'RevisionHistory', dataIndex: 'RevisionHistory' }
+                    { text: 'Ranking', dataIndex: 'Ranking', width: '5%' },
+                    { text: 'ID', dataIndex: 'FormattedID', width: '5%'  },
+                    { text: 'Name', dataIndex: 'Name', flex: 1, width: '50%' },
+                    { text: 'In Progress Date', dataIndex: 'InProgressDate', width: '20%'  },
+                    { text: 'Accepted Date', dataIndex: 'AcceptedDate', width: '20%'  }                    
                 ]
             });
         } else {
@@ -149,12 +140,33 @@ Ext.define('CustomApp', {
             this.reportObj = new ReportObj(this.startDate, this.endDate, userStories);
             this.reportObj.calculateDaysInProgress();
             this.reportObj.displayChart();
-        }
-        else {
-            //Display message
+            
+            this.chartGrid = this.down('#pieChart').add({                    
+                xtype: 'rallygrid',
+                store: this.reportObj.buildChartDataStore(),                    
+                header: false,                    
+                bodyBorder: false,
+                hideHeaders: true,
+                tbar: false,
+                hideMode: 'visibility',
+                showPagingToolbar: false,
+                style: {
+                    float: 'right',
+                    height: '100%',
+                    width: '25%'
+                },
+                columnCfgs: [
+                    { text: '', dataIndex: 'name' },
+                    { text: 'Days In Progress', dataIndex: 'data' }
+                ]
+            });
+         
 
+        }
+        else {            
             //Remove Pie Chart if it exists
             new ReportObj('', '', '').removeChart();
+            
         }
 
     }
