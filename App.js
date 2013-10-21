@@ -23,11 +23,11 @@ Ext.define('CustomApp', {
         },
         {
             xtype: 'container',
-            itemId: 'pieChart',            
+            itemId: 'pieChart',
             style: {
                 float: 'right',
                 width: '75%',
-                'vertical-align': 'top'                
+                'vertical-align': 'top'
             }
         },
         {
@@ -73,7 +73,7 @@ Ext.define('CustomApp', {
             model: 'UserStory',
             autoLoad: true,
             limit: 9999999,
-            fetch: ['Rank', 'FormattedID', 'Name', 'AcceptedDate', 'InProgressDate', 'RevisionHistory'],
+            fetch: ['_ref', 'FormattedID', 'Name', 'AcceptedDate', 'InProgressDate', 'RevisionHistory'],
             filters: [
                 {
                     property: 'ScheduleState',
@@ -99,17 +99,17 @@ Ext.define('CustomApp', {
     _onDataLoaded: function (store, data) {
         var records = [], rankIndex = 1, userStories = new Array();
         var _endDate = this.endDate;
-        var _startDate = this.startDate;       
+        var _startDate = this.startDate;
         Ext.Array.each(data, function (record) {
             //TODO: InProgressDate parsing from the revision history            
-            if (record.get('AcceptedDate') <= _endDate && record.get('InProgressDate') >= _startDate) {
+            if (record.get('AcceptedDate') <= _endDate && record.get('InProgressDate') >= _startDate) {                
                 records.push({
-                    Ranking: rankIndex++,
-                    FormattedID: record.get('FormattedID'),
+                    FormattedID: '<a href="'+ Rally.nav.Manager.getDetailUrl(record)+'"  target="_blank" >' + record.get('FormattedID') + '</a>',
                     Name: record.get('Name'),
                     AcceptedDate: record.get('AcceptedDate'),
                     InProgressDate: record.get('InProgressDate'),
-                    RevisionHistory: record.get('RevisionHistory')
+                    RevisionHistory: record.get('RevisionHistory'),
+                    DaysInProgress: Rally.util.DateTime.getDifference(record.get('AcceptedDate'), record.get('InProgressDate'), 'day')
                 });
                 userStories.push(new UserStory(rankIndex++, record.get('FormattedID'), record.get('AcceptedDate'), record.get('InProgressDate'), record.get('RevisionHistory')));
             }
@@ -124,11 +124,11 @@ Ext.define('CustomApp', {
                 xtype: 'rallygrid',
                 store: customStore,
                 columnCfgs: [
-                    { text: 'Ranking', dataIndex: 'Ranking', width: '5%' },
-                    { text: 'ID', dataIndex: 'FormattedID', width: '5%'  },
+                    { text: 'ID', dataIndex: 'FormattedID', width: '5%' },
                     { text: 'Name', dataIndex: 'Name', flex: 1, width: '50%' },
-                    { text: 'In Progress Date', dataIndex: 'InProgressDate', width: '20%'  },
-                    { text: 'Accepted Date', dataIndex: 'AcceptedDate', width: '20%'  }                    
+                    { text: 'Days In Progress', dataIndex: 'DaysInProgress', flex: 1, width: '5%' },
+                    { text: 'In Progress Date', dataIndex: 'InProgressDate', width: '20%' },
+                    { text: 'Accepted Date', dataIndex: 'AcceptedDate', width: '20%' }
                 ]
             });
         } else {
@@ -140,11 +140,11 @@ Ext.define('CustomApp', {
             this.reportObj = new ReportObj(this.startDate, this.endDate, userStories);
             this.reportObj.calculateDaysInProgress();
             this.reportObj.displayChart();
-            
-            this.chartGrid = this.down('#pieChart').add({                    
+
+            this.chartGrid = this.down('#pieChart').add({
                 xtype: 'rallygrid',
-                store: this.reportObj.buildChartDataStore(),                    
-                header: false,                    
+                store: this.reportObj.buildChartDataStore(true),
+                header: false,
                 bodyBorder: false,
                 hideHeaders: true,
                 tbar: false,
@@ -153,20 +153,20 @@ Ext.define('CustomApp', {
                 style: {
                     float: 'right',
                     height: '100%',
-                    width: '25%'
+                    width: '30%'
                 },
                 columnCfgs: [
-                    { text: '', dataIndex: 'name' },
+                    { text: '', dataIndex: 'name', width: '70%' },
                     { text: 'Days In Progress', dataIndex: 'data' }
                 ]
             });
-         
+
 
         }
-        else {            
+        else {
             //Remove Pie Chart if it exists
             new ReportObj('', '', '').removeChart();
-            
+
         }
 
     }

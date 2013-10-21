@@ -41,10 +41,10 @@ ReportObj = function (startDate, endDate, userStories) {
 
         if (piePlace.items.length == 0) {
             Ext.ComponentQuery.query('#pieChart')[0].add(this.getChart());
-        } else {            
-            Ext.ComponentQuery.query('#pieChart')[0].removeAll(true);            
-            this.getChart().bindStore(this.buildChartDataStore());
-            Ext.ComponentQuery.query('#pieChart')[0].add(this.getChart());           
+        } else {
+            Ext.ComponentQuery.query('#pieChart')[0].removeAll(true);
+            this.getChart().bindStore(this.buildChartDataStore(false));
+            Ext.ComponentQuery.query('#pieChart')[0].add(this.getChart());
         }
 
     };
@@ -61,7 +61,7 @@ ReportObj = function (startDate, endDate, userStories) {
 
     };
 
-    this.buildChartData = function () {
+    this.buildChartData = function (isSummary) {
         var start = 5;
         var end = 10;
         var bound = 31;
@@ -99,42 +99,59 @@ ReportObj = function (startDate, endDate, userStories) {
             });
         }
 
+        if (isSummary) {
+            data.push({
+                'name': 'Total Stories Completed',
+                'data': this.userStories.length
+            });
+
+            var totalDays = 0;
+            for (var i in this.dayRange) {
+                totalDays = totalDays + this.dayRange[i];                
+            }
+
+            data.push({
+                'name': 'Average Numer of Days In Progress',
+                'data': Math.round(totalDays/this.userStories.length)
+            });
+        }
+
         return data;
 
     };
 
-    this.buildChartDataStore = function () {
+    this.buildChartDataStore = function (isSummary) {
         var store = Ext.create('Ext.data.JsonStore', {
             fields: ['name', 'data'],
-            data: this.buildChartData()
+            data: this.buildChartData(isSummary)
         });
 
         return store
     }
 
     this.getChart = function () {
-        var store = this.buildChartDataStore();
+        var store = this.buildChartDataStore(false);
 
-        var chart = Ext.create('Ext.chart.Chart', {
+        var chart = Ext.create('Ext.chart.Chart', {            
             id: 'storyPieChart',
+            title: 'User Story Cycle Time',
             width: 600,
             height: 300,
             animate: true,
             style: {
                 float: 'right',
                 'margin-top': '-65px',
-                display: 'inline-block'  
+                display: 'inline-block'
             },
             store: store,
-            theme: 'Base:gradients',
-            title: 'Story Cycle Time',
+            theme: 'Base:gradients',            
             showInLegend: true,
             legend: {
                 position: 'left'
             },
             series: [{
                 type: 'pie',
-                field: 'data',
+                field: 'data',                
                 showInLegend: true,
                 tips: {
                     trackMouse: true,
