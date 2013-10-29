@@ -32,11 +32,11 @@
                     },
                     {
                         xtype: 'container',
-                        itemId: 'pieChart',            
+                        itemId: 'pieChart',
                         style: {
                             float: 'right',
                             width: '75%',
-                            'vertical-align': 'top'                
+                            'vertical-align': 'top'
                         }
                     },
                     {
@@ -82,12 +82,16 @@
                         model: 'UserStory',
                         autoLoad: true,
                         limit: 9999999,
-                        fetch: ['Rank', 'FormattedID', 'Name', 'AcceptedDate', 'InProgressDate', 'RevisionHistory'],
+                        fetch: ['_ref', 'FormattedID', 'Name', 'AcceptedDate', 'InProgressDate', 'RevisionHistory', 'Revisions', 'Description', 'User'],
                         filters: [
                             {
                                 property: 'ScheduleState',
                                 operator: '=',
                                 value: 'Accepted'
+                            },
+                            {
+                                property: 'DirectChildrenCount',
+                                value: '0'
                             }
                         ],
                         sorters: [
@@ -108,17 +112,24 @@
                 _onDataLoaded: function (store, data) {
                     var records = [], rankIndex = 1, userStories = new Array();
                     var _endDate = this.endDate;
-                    var _startDate = this.startDate;       
+                    var _startDate = this.startDate;
                     Ext.Array.each(data, function (record) {
-                        //TODO: InProgressDate parsing from the revision history            
+                        //TODO: InProgressDate parsing from the revision history  
+            
                         if (record.get('AcceptedDate') <= _endDate && record.get('InProgressDate') >= _startDate) {
+                            
+                            /*console.log(record.get('RevisionHistory').Revisions);
+                            Ext.Array.each(record.get('RevisionHistory').Revisions, function (revision) {
+                                console.log(revision);
+                            });*/
+            
                             records.push({
-                                Ranking: rankIndex++,
-                                FormattedID: record.get('FormattedID'),
+                                FormattedID: '<a href="' + Rally.nav.Manager.getDetailUrl(record) + '"  target="_blank" >' + record.get('FormattedID') + '</a>',
                                 Name: record.get('Name'),
                                 AcceptedDate: record.get('AcceptedDate'),
                                 InProgressDate: record.get('InProgressDate'),
-                                RevisionHistory: record.get('RevisionHistory')
+                                RevisionHistory: record.get('RevisionHistory'),
+                                DaysInProgress: Rally.util.DateTime.getDifference(record.get('AcceptedDate'), record.get('InProgressDate'), 'day')
                             });
                             userStories.push(new UserStory(rankIndex++, record.get('FormattedID'), record.get('AcceptedDate'), record.get('InProgressDate'), record.get('RevisionHistory')));
                         }
@@ -133,11 +144,11 @@
                             xtype: 'rallygrid',
                             store: customStore,
                             columnCfgs: [
-                                { text: 'Ranking', dataIndex: 'Ranking', width: '5%' },
-                                { text: 'ID', dataIndex: 'FormattedID', width: '5%'  },
+                                { text: 'ID', dataIndex: 'FormattedID', width: '5%' },
                                 { text: 'Name', dataIndex: 'Name', flex: 1, width: '50%' },
-                                { text: 'In Progress Date', dataIndex: 'InProgressDate', width: '20%'  },
-                                { text: 'Accepted Date', dataIndex: 'AcceptedDate', width: '20%'  }                    
+                                { text: 'Days In Progress', dataIndex: 'DaysInProgress', flex: 1, width: '5%' },
+                                { text: 'In Progress Date', dataIndex: 'InProgressDate', width: '20%' },
+                                { text: 'Accepted Date', dataIndex: 'AcceptedDate', width: '20%' }
                             ]
                         });
                     } else {
@@ -149,11 +160,11 @@
                         this.reportObj = new ReportObj(this.startDate, this.endDate, userStories);
                         this.reportObj.calculateDaysInProgress();
                         this.reportObj.displayChart();
-                        
-                        this.chartGrid = this.down('#pieChart').add({                    
+            
+                        this.chartGrid = this.down('#pieChart').add({
                             xtype: 'rallygrid',
-                            store: this.reportObj.buildChartDataStore(),                    
-                            header: false,                    
+                            store: this.reportObj.buildChartDataStore(true),
+                            header: false,
                             bodyBorder: false,
                             hideHeaders: true,
                             tbar: false,
@@ -162,20 +173,20 @@
                             style: {
                                 float: 'right',
                                 height: '100%',
-                                width: '25%'
+                                width: '30%'
                             },
                             columnCfgs: [
-                                { text: '', dataIndex: 'name' },
+                                { text: '', dataIndex: 'name', width: '70%' },
                                 { text: 'Days In Progress', dataIndex: 'data' }
                             ]
                         });
-                     
+            
             
                     }
-                    else {            
+                    else {
                         //Remove Pie Chart if it exists
                         new ReportObj('', '', '').removeChart();
-                        
+            
                     }
             
                 }
@@ -231,10 +242,10 @@
             
                     if (piePlace.items.length == 0) {
                         Ext.ComponentQuery.query('#pieChart')[0].add(this.getChart());
-                    } else {            
-                        Ext.ComponentQuery.query('#pieChart')[0].removeAll(true);            
-                        this.getChart().bindStore(this.buildChartDataStore());
-                        Ext.ComponentQuery.query('#pieChart')[0].add(this.getChart());           
+                    } else {
+                        Ext.ComponentQuery.query('#pieChart')[0].removeAll(true);
+                        this.getChart().bindStore(this.buildChartDataStore(false));
+                        Ext.ComponentQuery.query('#pieChart')[0].add(this.getChart());
                     }
             
                 };
@@ -251,7 +262,7 @@
             
                 };
             
-                this.buildChartData = function () {
+                this.buildChartData = function (isSummary) {
                     var start = 5;
                     var end = 10;
                     var bound = 31;
@@ -289,42 +300,59 @@
                         });
                     }
             
+                    if (isSummary) {
+                        data.push({
+                            'name': 'Total Stories Completed',
+                            'data': this.userStories.length
+                        });
+            
+                        var totalDays = 0;
+                        for (var i in this.dayRange) {
+                            totalDays = totalDays + this.dayRange[i];                
+                        }
+            
+                        data.push({
+                            'name': 'Average Numer of Days In Progress',
+                            'data': Math.round(totalDays/this.userStories.length)
+                        });
+                    }
+            
                     return data;
             
                 };
             
-                this.buildChartDataStore = function () {
+                this.buildChartDataStore = function (isSummary) {
                     var store = Ext.create('Ext.data.JsonStore', {
                         fields: ['name', 'data'],
-                        data: this.buildChartData()
+                        data: this.buildChartData(isSummary)
                     });
             
                     return store
                 }
             
                 this.getChart = function () {
-                    var store = this.buildChartDataStore();
+                    var store = this.buildChartDataStore(false);
             
-                    var chart = Ext.create('Ext.chart.Chart', {
+                    var chart = Ext.create('Ext.chart.Chart', {            
                         id: 'storyPieChart',
+                        title: 'User Story Cycle Time',
                         width: 600,
                         height: 300,
                         animate: true,
                         style: {
                             float: 'right',
                             'margin-top': '-65px',
-                            display: 'inline-block'  
+                            display: 'inline-block'
                         },
                         store: store,
-                        theme: 'Base:gradients',
-                        title: 'Story Cycle Time',
+                        theme: 'Base:gradients',            
                         showInLegend: true,
                         legend: {
                             position: 'left'
                         },
                         series: [{
                             type: 'pie',
-                            field: 'data',
+                            field: 'data',                
                             showInLegend: true,
                             tips: {
                                 trackMouse: true,

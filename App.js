@@ -73,12 +73,16 @@ Ext.define('CustomApp', {
             model: 'UserStory',
             autoLoad: true,
             limit: 9999999,
-            fetch: ['_ref', 'FormattedID', 'Name', 'AcceptedDate', 'InProgressDate', 'RevisionHistory'],
+            fetch: ['_ref', 'FormattedID', 'Name', 'AcceptedDate', 'InProgressDate', 'RevisionHistory', 'Revisions', 'Description', 'User'],
             filters: [
                 {
                     property: 'ScheduleState',
                     operator: '=',
                     value: 'Accepted'
+                },
+                {
+                    property: 'DirectChildrenCount',
+                    value: '0'
                 }
             ],
             sorters: [
@@ -101,10 +105,17 @@ Ext.define('CustomApp', {
         var _endDate = this.endDate;
         var _startDate = this.startDate;
         Ext.Array.each(data, function (record) {
-            //TODO: InProgressDate parsing from the revision history            
-            if (record.get('AcceptedDate') <= _endDate && record.get('InProgressDate') >= _startDate) {                
+            //TODO: InProgressDate parsing from the revision history  
+
+            if (record.get('AcceptedDate') <= _endDate && record.get('InProgressDate') >= _startDate) {
+                
+                /*console.log(record.get('RevisionHistory').Revisions);
+                Ext.Array.each(record.get('RevisionHistory').Revisions, function (revision) {
+                    console.log(revision);
+                });*/
+
                 records.push({
-                    FormattedID: '<a href="'+ Rally.nav.Manager.getDetailUrl(record)+'"  target="_blank" >' + record.get('FormattedID') + '</a>',
+                    FormattedID: '<a href="' + Rally.nav.Manager.getDetailUrl(record) + '"  target="_blank" >' + record.get('FormattedID') + '</a>',
                     Name: record.get('Name'),
                     AcceptedDate: record.get('AcceptedDate'),
                     InProgressDate: record.get('InProgressDate'),
