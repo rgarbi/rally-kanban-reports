@@ -3,12 +3,12 @@
     "className": "CustomApp",
     "sdk": "2.0rc1",
     "javascript": [
-        "App.js",
-        "UserStory.js",
-        "ReportObj.js",
-        "util.js"
+        "js/App.js",
+        "js/UserStory.js",
+        "js/ReportObj.js",
+        "js/util.js"
     ],
     "css": [
-        "app.css"
+        "style/app.css"
     ]
 }
