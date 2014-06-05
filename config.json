@@ -1,14 +1,15 @@
 {
-    "name": "Kanban Reports",
-    "className": "CustomApp",
-    "sdk": "2.0rc1",
-    "javascript": [
-        "js/App.js",
-        "js/UserStory.js",
-        "js/ReportObj.js",
-        "js/util.js"
-    ],
-    "css": [
-        "style/app.css"
-    ]
+   "name": "Kanban Reports",
+   "className": "CustomApp",
+   "sdk": "2.0rc2",
+   "javascript": [
+      "js/App.js",
+      "js/UserStory.js",
+      "js/ReportObj.js",
+      "js/util.js"
+   ],
+   "css": [
+      "style/app.css"
+   ],
+   "server": "https://rally1.rallydev.com"
 }

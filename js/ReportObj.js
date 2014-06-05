@@ -3,12 +3,12 @@ ReportObj = function (startDate, endDate, userStories) {
     this.startDate = startDate;
     this.endDate = endDate;
     this.userStories = userStories;
-    this.dayRange = new Array();
+    this.dayRange = [];
 
     this.totalStories = userStories.size;
     this.averageDaysInProgress = 0;
 
-    this.calculateDaysInProgress = function () {
+    this.calculateDaysInProgress = function (excludeWeekends) {
 
         for (var us in this.userStories) {
             var userStory = this.userStories[us];
@@ -16,8 +16,8 @@ ReportObj = function (startDate, endDate, userStories) {
             var startedDate = new Date(userStory.inProgressDate);
             var doneDate = new Date(userStory.acceptedDate);
 
-            var timeInProgress = Rally.util.DateTime.getDifference(doneDate, startedDate, 'day');
-            if (timeInProgress == 0) {
+            var timeInProgress = new Util().getNumberOfDaysInRange(startedDate, doneDate, excludeWeekends);
+            if (timeInProgress === 0) {
                 timeInProgress = 1;
             }
             this.dayRange.push(timeInProgress);
@@ -39,7 +39,7 @@ ReportObj = function (startDate, endDate, userStories) {
 
         var piePlace = Ext.ComponentQuery.query('#pieChart')[0];
 
-        if (piePlace.items.length == 0) {
+        if (piePlace.items.length === 0) {
             Ext.ComponentQuery.query('#pieChart')[0].add(this.getChart());
         } else {
             Ext.ComponentQuery.query('#pieChart')[0].removeAll(true);
@@ -53,7 +53,7 @@ ReportObj = function (startDate, endDate, userStories) {
 
         var piePlace = Ext.ComponentQuery.query('#pieChart')[0];
 
-        if (piePlace.items.length == 0) {
+        if (piePlace.items.length === 0) {
             //Do nothing
         } else {
             Ext.ComponentQuery.query('#pieChart')[0].removeAll(true);
@@ -65,7 +65,7 @@ ReportObj = function (startDate, endDate, userStories) {
         var start = 5;
         var end = 10;
         var bound = 31;
-        var data = new Array();
+        var data = [];
 
         var range = this.getStoriesInRange(0, 5);
         if (range > 0) {
@@ -126,8 +126,8 @@ ReportObj = function (startDate, endDate, userStories) {
             data: this.buildChartData(isSummary)
         });
 
-        return store
-    }
+        return store;
+    };
 
     this.getChart = function () {
         var store = this.buildChartDataStore(false);

@@ -42,11 +42,27 @@ Ext.define('CustomApp', {
         }
     ],
 
-    launch: function () {
-        this.down('#getReport').addListener("click", this._vlaidateQuery, this);
+	getSettingsFields: function() {
+		return [
+			{
+				name: 'excludeWeekends',
+				xtype: 'rallycheckboxfield',
+				fieldLabel: 'Exclude Weekends from Lead Time'
+			}
+		];
+	},
+    
+    config: {
+		defaultSettings: {
+			excludeWeekends: true
+		}
     },
 
-    _vlaidateQuery: function () {
+    launch: function () {
+        this.down('#getReport').addListener("click", this._validateQuery, this);
+    },
+
+    _validateQuery: function () {
         //Get start Date
         var startDate, endDate;
         var compArray = Ext.ComponentQuery.query('rallydatefield');
@@ -55,11 +71,11 @@ Ext.define('CustomApp', {
             var id = compArray[item].itemid;
 
             if (id === "startDate") {
-                startDate = compArray[item].rawValue
+                startDate = compArray[item].rawValue;
             }
 
             if (id === "endDate") {
-                endDate = compArray[item].rawValue
+                endDate = compArray[item].rawValue;
             }
         }
 
@@ -101,9 +117,11 @@ Ext.define('CustomApp', {
     reportObj: '',
 
     _onDataLoaded: function (store, data) {
-        var records = [], rankIndex = 1, userStories = new Array();
+        var records = [], rankIndex = 1, userStories = [];
         var _endDate = this.endDate;
         var _startDate = this.startDate;
+        var excludeWeekends = this.getSetting('excludeWeekends');
+
         Ext.Array.each(data, function (record) {
             //TODO: InProgressDate parsing from the revision history  
 
@@ -113,6 +131,9 @@ Ext.define('CustomApp', {
                 Ext.Array.each(record.get('RevisionHistory').Revisions, function (revision) {
                     console.log(revision);
                 });*/
+                var startDate = record.get('InProgressDate');
+                var endDate = record.get('AcceptedDate');
+                var daysInProgress = new Util().getNumberOfDaysInRange(startDate, endDate, excludeWeekends);
 
                 records.push({
                     FormattedID: '<a href="' + Rally.nav.Manager.getDetailUrl(record) + '"  target="_blank" >' + record.get('FormattedID') + '</a>',
@@ -120,7 +141,7 @@ Ext.define('CustomApp', {
                     AcceptedDate: record.get('AcceptedDate'),
                     InProgressDate: record.get('InProgressDate'),
                     RevisionHistory: record.get('RevisionHistory'),
-                    DaysInProgress: Rally.util.DateTime.getDifference(record.get('AcceptedDate'), record.get('InProgressDate'), 'day')
+                    DaysInProgress: daysInProgress
                 });
                 userStories.push(new UserStory(rankIndex++, record.get('FormattedID'), record.get('AcceptedDate'), record.get('InProgressDate'), record.get('RevisionHistory')));
             }
@@ -149,7 +170,7 @@ Ext.define('CustomApp', {
         console.log(records.length);
         if (records.length > 0) {
             this.reportObj = new ReportObj(this.startDate, this.endDate, userStories);
-            this.reportObj.calculateDaysInProgress();
+            this.reportObj.calculateDaysInProgress(excludeWeekends);
             this.reportObj.displayChart();
 
             this.chartGrid = this.down('#pieChart').add({
