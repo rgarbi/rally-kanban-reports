@@ -125,7 +125,7 @@ Ext.define('CustomApp', {
         Ext.Array.each(data, function (record) {
             //TODO: InProgressDate parsing from the revision history  
 
-            if (record.get('AcceptedDate') <= _endDate && record.get('InProgressDate') >= _startDate) {
+            if (record.get('AcceptedDate') <= _endDate && record.get('AcceptedDate') >= _startDate) {
                 
                 /*console.log(record.get('RevisionHistory').Revisions);
                 Ext.Array.each(record.get('RevisionHistory').Revisions, function (revision) {
