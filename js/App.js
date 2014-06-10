@@ -6,13 +6,13 @@ Ext.define('CustomApp', {
     items: [
         {
             xtype: 'rallydatefield',
-            fieldLabel: 'Start Sate',
+            fieldLabel: 'Start Date',
             itemid: 'startDate',
             value: new Date()
         },
         {
             xtype: 'rallydatefield',
-            fieldLabel: 'End Sate',
+            fieldLabel: 'End Date',
             itemid: 'endDate',
             value: new Date()
         },
