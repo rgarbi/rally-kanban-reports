@@ -111,7 +111,7 @@ ReportObj = function (startDate, endDate, userStories) {
             }
 
             data.push({
-                'name': 'Average Numer of Days In Progress',
+                'name': 'Average Number of Days In Progress',
                 'data': Math.round(totalDays/this.userStories.length)
             });
         }
